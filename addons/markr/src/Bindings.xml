@@ -1,0 +1,15 @@
+<Bindings>
+	<!--
+		World marker placement is a protected action, so it cannot be triggered from
+		addon Lua. These are "CLICK" bindings instead: the client securely clicks the
+		hidden MarkrButton, and the secure OnClick snippet in Secure.lua decides which
+		marker to place. Display names live in BINDING_NAME_* globals in Markr.lua.
+
+		`category` is what puts these in their own section of the keybindings panel;
+		a binding without one lands under "Other". The panel shows _G[category], so
+		the value is the *name of a global*: BINDING_HEADER_MARKR in Markr.lua.
+	-->
+	<Binding name="CLICK MarkrButton:LeftButton" category="BINDING_HEADER_MARKR" />
+	<Binding name="CLICK MarkrButton:RightButton" category="BINDING_HEADER_MARKR" />
+	<Binding name="CLICK MarkrButton:MiddleButton" category="BINDING_HEADER_MARKR" />
+</Bindings>

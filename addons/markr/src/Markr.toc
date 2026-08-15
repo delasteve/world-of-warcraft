@@ -1,0 +1,17 @@
+## Interface: 120100, 120005
+## Title: Markr
+## Notes: Build a world marker sequence, drop it from one hotkey, and switch presets when the plan changes.
+## Author: delasteve
+## Version: 1.0.0
+## SavedVariables: MarkrDB
+## IconTexture: Interface\AddOns\Markr\Textures\Glyph.png
+## AddonCompartmentFunc: Markr_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: Markr_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: Markr_OnAddonCompartmentLeave
+
+Markr.lua
+Database.lua
+Secure.lua
+Commands.lua
+Config.lua
+Launcher.lua
