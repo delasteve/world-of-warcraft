@@ -1,0 +1,16 @@
+{
+  "name": "world-of-warcraft",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "prepare": "lefthook install",
+    "commitlint": "commitlint"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
+    "lefthook": "^2.1.10"
+  }
+}

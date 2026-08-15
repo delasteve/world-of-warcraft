@@ -1,0 +1,23 @@
+# temporary folders
+temp
+.tmp
+tmp
+
+# Packager output. Both are written inside the addon directory being released
+# (the packager's topdir), so these patterns are deliberately unanchored.
+.release/
+CHANGELOG.md
+
+# IDE - VSCode
+.vscode
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+CLAUDE.md
+
+# Node
+node_modules/

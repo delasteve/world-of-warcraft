@@ -1,0 +1,57 @@
+name: Commit messages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  commitlint:
+    name: Lint commit messages
+    runs-on: ubuntu-latest
+    steps:
+      # commitlint walks a commit range, so it needs the history, not just the tip.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Must come before setup-node: the pnpm cache key is built from the store
+      # path, which does not exist until pnpm does. The version comes from the
+      # packageManager field in package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint the pushed commits
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          # On a pull request, lint what the branch adds. On a push, lint what the
+          # push added. A force-push naming a commit that no longer exists, and the
+          # all-zero sha of a branch's first push, both fall through to the history.
+          from=""
+          if [ -n "${PR_BASE:-}" ]; then
+            from="$PR_BASE"
+          elif [ -n "${BEFORE:-}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            from="$BEFORE"
+          fi
+
+          if [ -n "$from" ]; then
+            echo "Linting $from..$GITHUB_SHA"
+            pnpm exec commitlint --from "$from" --to "$GITHUB_SHA" --verbose
+          else
+            # --from is exclusive, so it can never reach the root commit. Lint the
+            # root on its own, then everything built on top of it.
+            root=$(git rev-list --max-parents=0 "$GITHUB_SHA" | tail -1)
+            echo "No usable base, linting the whole history from $root"
+            git log -1 --format=%B "$root" | pnpm exec commitlint --verbose
+            pnpm exec commitlint --from "$root" --to "$GITHUB_SHA" --verbose
+          fi

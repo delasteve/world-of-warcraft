@@ -1,0 +1,16 @@
+# Normalise everything to LF in the repository and in working copies.
+#
+# Without this, core.autocrlf on Windows checks the tree out as CRLF while the
+# blobs stay LF, so the same file reads differently depending on the machine it
+# was cloned onto. Pinning it keeps every addon's sources identical everywhere.
+* text=auto eol=lf
+
+# WoW reads either, but keep them LF for the same reason.
+*.toc  text eol=lf
+*.lua  text eol=lf
+*.xml  text eol=lf
+
+# Binaries
+*.png  binary
+*.blp  binary
+*.tga  binary

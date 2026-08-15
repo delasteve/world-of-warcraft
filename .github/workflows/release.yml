@@ -1,0 +1,168 @@
+name: Release
+
+# One workflow releases every addon in the repo. The tag says which one:
+# `<addon-dir>/<version>`, e.g. `markr/1.1.0`. Directories, tags and commit
+# scopes are all lowercase; the name the addon ships under lives only in that
+# addon's `package-as`, because WoW requires a specific spelling and the repo
+# does not.
+#
+# `*` in a tag filter does not match `/`, so this pattern is exactly one path
+# segment, a slash, then a version. `+` means "one or more of the preceding
+# character" in GitHub's filter syntax, which is not regex.
+on:
+  push:
+    tags:
+      - "*/[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and publish
+    runs-on: ubuntu-latest
+
+    # Declared empty and filled in at runtime through $GITHUB_ENV.
+    env:
+      ADDON: ""
+      PACKAGE: ""
+      VERSION: ""
+      DIR: ""
+      BUILD: ""
+      PACKAGER_ARGS: ""
+
+    steps:
+      - name: Check out the tag with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the addon and version from the tag
+        run: |
+          set -euo pipefail
+          addon=${GITHUB_REF_NAME%/*}
+          version=${GITHUB_REF_NAME##*/}
+          dir="addons/$addon"
+
+          if [ ! -f "$dir/.pkgmeta" ] || [ ! -d "$dir/src" ]; then
+            echo "::error::The tag names $addon, but $dir has no .pkgmeta and src/"
+            exit 1
+          fi
+
+          # Directories, tags and commit scopes are lowercase. The addon still has
+          # to ship under the name WoW expects to find in Interface/AddOns, and
+          # package-as is the only place that name is written down.
+          package=$(sed -n 's/^package-as:[[:space:]]*//p' "$dir/.pkgmeta" | tr -d '\r')
+          if [ -z "$package" ]; then
+            echo "::error::$dir/.pkgmeta does not set package-as"
+            exit 1
+          fi
+
+          {
+            echo "ADDON=$addon"
+            echo "PACKAGE=$package"
+            echo "VERSION=$version"
+            echo "DIR=$dir"
+          } >> "$GITHUB_ENV"
+
+      - name: Check the tag against the TOC version
+        run: |
+          set -euo pipefail
+          toc=$(sed -n 's/^## Version:[[:space:]]*//p' "$DIR/src/$PACKAGE.toc" | tr -d '\r')
+          if [ "$toc" != "$VERSION" ]; then
+            echo "::error::$PACKAGE.toc says $toc but the tag is $VERSION"
+            exit 1
+          fi
+
+      # The API tokens are account-wide and live in repository secrets. Only the
+      # per-project ids differ per addon, so each addon carries its own; an addon
+      # without the file publishes to GitHub alone.
+      - name: Load the addon's distribution ids
+        run: |
+          set -euo pipefail
+          if [ -f "$DIR/release.env" ]; then
+            # Only assignment lines: $GITHUB_ENV rejects the file outright over a
+            # comment or a blank line, so neither can be passed through.
+            grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$DIR/release.env" >> "$GITHUB_ENV" || true
+          else
+            echo "No $DIR/release.env, so $ADDON publishes to GitHub only."
+          fi
+
+      # The packager insists on a checkout with .git as a real directory at its
+      # topdir, and will not walk up to find one, so it cannot be aimed at a
+      # subdirectory of this repo. It gets a throwaway single-addon checkout
+      # instead. That also makes the release airtight: only what is copied in
+      # here can possibly ship, so a new file beside the addon — another
+      # release.env, a design note — can never leak into a published zip.
+      - name: Assemble the staging checkout
+        run: |
+          set -euo pipefail
+          build=$(mktemp -d)
+          cp -a "$DIR/src" "$build/src"
+          cp "$DIR/.pkgmeta" "$build/.pkgmeta"
+          # Every addon here is MIT under the same holder, so the licence lives at
+          # the repo root and is copied into each zip from there.
+          cp LICENSE.md "$build/LICENSE.md"
+          echo "BUILD=$build" >> "$GITHUB_ENV"
+
+      - name: Build the changelog from feat and fix commits
+        run: |
+          set -euo pipefail
+
+          # Both filters are what keep one addon's notes free of another's work:
+          # --match finds the previous tag for THIS addon rather than whichever
+          # tag happens to be most recent, and the pathspec drops commits that
+          # never touched this addon's directory. Read from this repo, not from
+          # the staging checkout, which has no history worth speaking of.
+          previous=$(git describe --tags --abbrev=0 --match "$ADDON/*" "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          range=${previous:+$previous..}
+
+          section() {
+            local body
+            body=$(git log --no-merges --pretty=format:%s "$range$GITHUB_REF_NAME" -- "$DIR" \
+              | sed -n "s/^$1\(([^)]*)\)\?!\?: //p" | sed 's/^./\U&/')
+            [ -z "$body" ] && return 0
+            printf '## %s\n\n' "$2"
+            echo "$body" | sed 's/^/- /'
+            printf '\n'
+          }
+
+          {
+            printf '# %s\n\n' "$VERSION"
+            section feat Added
+            section fix Fixed
+          } > "$BUILD/CHANGELOG.md"
+
+          if [ "$(wc -l < "$BUILD/CHANGELOG.md")" -le 2 ]; then
+            printf 'No player-facing changes.\n' >> "$BUILD/CHANGELOG.md"
+          fi
+
+          cat "$BUILD/CHANGELOG.md"
+
+      # The packager reads the version and the release's target tag from the tag
+      # on this checkout, so it carries the real tag name rather than a bare
+      # version: that is what makes it attach the GitHub release to the tag that
+      # triggered this run instead of creating a new one.
+      - name: Make the staging checkout a repository
+        run: |
+          set -euo pipefail
+          git -C "$BUILD" init -q .
+          git -C "$BUILD" add -A
+          git -C "$BUILD" -c user.email=actions@github.com -c user.name="GitHub Actions" \
+            commit -qm "$GITHUB_REF_NAME"
+          git -C "$BUILD" tag -a "$GITHUB_REF_NAME" -m "$VERSION"
+          git -C "$BUILD" remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
+
+      # -n is required, not cosmetic: the packager takes the version from the raw
+      # tag, so without it the namespaced tag would ship Markr-markr_1.1.0.zip and
+      # show "markr/1.1.0" as the version on CurseForge. The two halves are the
+      # zip name and the upload label.
+      - name: Package, upload to the configured sites, create the GitHub release
+        uses: BigWigsMods/packager@v2
+        with:
+          pandoc: false
+          args: -t ${{ env.BUILD }} -n "{package-name}-${{ env.VERSION }}:${{ env.VERSION }}" ${{ env.PACKAGER_ARGS }}
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
