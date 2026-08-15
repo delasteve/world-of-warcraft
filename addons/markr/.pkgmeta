@@ -1,0 +1,12 @@
+# The release workflow builds a staging checkout containing only src/, the
+# licence and the changelog, so nothing here needs an ignore list: files that
+# must not ship never reach the packager in the first place.
+
+package-as: Markr
+
+move-folders:
+  Markr/src: Markr
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
