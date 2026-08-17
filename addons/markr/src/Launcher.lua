@@ -8,7 +8,15 @@ local MINIMAP_RADIUS = 80
 
 local minimapButton
 
+-- A button bar that gathers minimap icons takes this one by reparenting it, and
+-- anchoring to the minimap from inside such a bar places the button outside it.
+local function OnTheMinimap()
+	return minimapButton:GetParent() == Minimap
+end
+
 local function PositionMinimapButton()
+	if not OnTheMinimap() then return end
+
 	local angle = math.rad(ns.db.minimap.angle or 200)
 	minimapButton:ClearAllPoints()
 	minimapButton:SetPoint("CENTER", Minimap, "CENTER",
@@ -63,6 +71,7 @@ local function CreateMinimapButton()
 	end)
 
 	minimapButton:SetScript("OnDragStart", function(self)
+		if not OnTheMinimap() then return end
 		self:SetScript("OnUpdate", TrackCursor)
 		GameTooltip:Hide()
 	end)
@@ -81,7 +90,9 @@ local function CreateMinimapButton()
 		GameTooltip:AddLine(" ")
 		GameTooltip:AddLine("Left click: open settings", 0.6, 0.6, 0.6)
 		GameTooltip:AddLine("Right click: restart the sequence", 0.6, 0.6, 0.6)
-		GameTooltip:AddLine("Drag: move this button", 0.6, 0.6, 0.6)
+		if OnTheMinimap() then
+			GameTooltip:AddLine("Drag: move this button", 0.6, 0.6, 0.6)
+		end
 		GameTooltip:Show()
 	end)
 	minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
