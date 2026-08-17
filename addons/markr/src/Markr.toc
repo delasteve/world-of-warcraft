@@ -4,6 +4,7 @@
 ## Author: delasteve
 ## Version: 1.0.0
 ## SavedVariables: MarkrDB
+## OptionalDeps: EllesmereUI
 ## IconTexture: Interface\AddOns\Markr\Textures\Glyph.png
 ## AddonCompartmentFunc: Markr_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: Markr_OnAddonCompartmentEnter
@@ -13,5 +14,7 @@ Markr.lua
 Database.lua
 Secure.lua
 Commands.lua
+Skin.lua
+Skins\EllesmereUI.lua
 Config.lua
 Launcher.lua

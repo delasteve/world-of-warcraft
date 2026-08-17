@@ -40,7 +40,9 @@ local UI = {
 	menu        = { 0.075, 0.081, 0.094, 1 },
 	text        = { 0.87, 0.88, 0.90 },
 	dim         = { 0.46, 0.48, 0.52 },
-	onAccent    = { 0.04, 0.05, 0.06 },
+	-- Ink for text on an accent fill; OnAccent picks between the two.
+	inkOnLight  = { 0.04, 0.05, 0.06 },
+	inkOnDark   = { 0.97, 0.98, 1.00 },
 	warn        = { 1.00, 0.55, 0.20 },
 }
 
@@ -54,6 +56,44 @@ local CLOSE_TEXTURE = "Interface\\AddOns\\Markr\\Textures\\Close.png"
 local function Shade(color, alpha)
 	return color[1], color[2], color[3], alpha or color[4] or 1
 end
+
+-- Perceived brightness, which weights green far above blue.
+local function OnAccent()
+	local r, g, b = UI.accent[1], UI.accent[2], UI.accent[3]
+	return (0.299 * r + 0.587 * g + 0.114 * b) > 0.55 and UI.inkOnLight or UI.inkOnDark
+end
+
+-- For the `|cff` escapes, which take hex and not the four numbers everything else
+-- here is painted with.
+local function AccentHex()
+	return ("%02x%02x%02x"):format(
+		math.floor(UI.accent[1] * 255 + 0.5),
+		math.floor(UI.accent[2] * 255 + 0.5),
+		math.floor(UI.accent[3] * 255 + 0.5))
+end
+
+--------------------------------------------------------------------------------
+-- Skin
+--------------------------------------------------------------------------------
+
+-- The regions painted in the accent that no Refresh already repaints.
+local themePainters = {}
+
+local function Themed(paint)
+	themePainters[#themePainters + 1] = paint
+	paint()
+end
+
+local function RepaintTheme()
+	for _, paint in ipairs(themePainters) do paint() end
+	Config:Refresh()
+end
+
+ns.Skin.OnLooksChanged(function()
+	local r, g, b = ns.Skin.AccentColor()
+	if r then UI.accent = { r, g, b } end
+	RepaintTheme()
+end)
 
 --------------------------------------------------------------------------------
 -- Pixel grid
@@ -204,9 +244,10 @@ end
 
 -- Every white font object also carries a black drop shadow, meant to hold up over
 -- the 3D world. On these flat fills it only smears the glyph edges, so it is
--- cleared here rather than left on.
+-- cleared here rather than left on, after the skin's font so the clearing lands last.
 local function CreateText(parent, text, font, color)
 	local label = parent:CreateFontString(nil, "ARTWORK", font or "GameFontHighlightSmall")
+	ns.Skin.Font(label)
 	label:SetShadowColor(0, 0, 0, 0)
 	label:SetShadowOffset(0, 0)
 	label:SetText(text)
@@ -214,9 +255,17 @@ local function CreateText(parent, text, font, color)
 	return label
 end
 
+-- The outline is dark, and so is the ink on a light accent, which fills the glyph
+-- in solid.
+local function FlattenOutline(label)
+	local path, size = label:GetFont()
+	if path and size then label:SetFont(path, size, "") end
+end
+
 local function CreateHeading(parent, text, x, y)
 	local label = CreateText(parent, text:upper(), "GameFontHighlightSmall", UI.accent)
 	PixelPoint(label, "TOPLEFT", x, y)
+	Themed(function() label:SetTextColor(Shade(UI.accent)) end)
 	return label
 end
 
@@ -244,8 +293,10 @@ local function CreateCard(parent, heading, x, y, height)
 	local card = CreateFrame("Frame", nil, parent)
 	PixelSize(card, CONTENT_WIDTH, height)
 	PixelPoint(card, "TOPLEFT", x, y)
-	Fill(card, "BACKGROUND", UI.card)
-	AddBorder(card, UI.border)
+	if not ns.Skin.Panel(card) then
+		Fill(card, "BACKGROUND", UI.card)
+		AddBorder(card, UI.border)
+	end
 	CreateHeading(card, heading, CARD_PAD, -11)
 	return card
 end
@@ -260,6 +311,7 @@ local function CreateButton(parent, text, width, height, onClick, primary)
 	button.label = CreateText(button, text, "GameFontHighlight")
 	button.label:SetPoint("CENTER")
 	button.primary = primary
+	if primary then FlattenOutline(button.label) end
 
 	function button:UpdateVisuals(state)
 		if not self:IsEnabled() then
@@ -269,7 +321,7 @@ local function CreateButton(parent, text, width, height, onClick, primary)
 		elseif self.primary then
 			self.bg:SetColorTexture(Shade(UI.accent, state == "over" and 1 or 0.85))
 			self.border:SetColor(Shade(UI.accent))
-			self.label:SetTextColor(Shade(UI.onAccent))
+			self.label:SetTextColor(Shade(OnAccent()))
 		else
 			local shade = (state == "over" and UI.controlOver)
 				or (state == "down" and UI.controlDown)
@@ -299,6 +351,8 @@ local function CreateButton(parent, text, width, height, onClick, primary)
 	button:SetScript("OnClick", onClick)
 
 	button:UpdateVisuals()
+	-- Only the primary state takes the accent; the rest repaint on hover and on enable.
+	if primary then Themed(function() button:UpdateVisuals() end) end
 	return button
 end
 
@@ -317,7 +371,7 @@ local function CreateToggle(parent, text, x, y, onToggle)
 	box.fill = box:CreateTexture(nil, "ARTWORK")
 	PixelPoint(box.fill, "TOPLEFT", 4, -4)
 	PixelPoint(box.fill, "BOTTOMRIGHT", -4, 4)
-	box.fill:SetColorTexture(Shade(UI.accent))
+	Themed(function() box.fill:SetColorTexture(Shade(UI.accent)) end)
 	box.fill:Hide()
 
 	toggle.label = CreateText(toggle, text, "GameFontHighlight")
@@ -369,12 +423,13 @@ local function CreateSegments(parent, entries, x, y, width, height, onSelect)
 		segment.bg = Fill(segment, "BACKGROUND")
 		segment.label = CreateText(segment, entry.text, "GameFontHighlight")
 		segment.label:SetPoint("CENTER")
+		FlattenOutline(segment.label)
 		SetTooltip(segment, entry.text, entry.tooltip)
 
 		function segment:Paint(hovered)
 			if control.value == self.value then
 				self.bg:SetColorTexture(Shade(UI.accent, 0.9))
-				self.label:SetTextColor(Shade(UI.onAccent))
+				self.label:SetTextColor(Shade(OnAccent()))
 			else
 				self.bg:SetColorTexture(Shade(UI.control, hovered and 0.12 or 0))
 				self.label:SetTextColor(Shade(hovered and UI.text or UI.dim))
@@ -604,7 +659,7 @@ local function StartCapture(action, label)
 	end
 	capture.action = action
 	capture.label:SetText(("Press a key for %s\n|cff777777Esc or left click to cancel|r")
-		:format(ns.Branded(label)))
+		:format(ns.Branded(label, AccentHex())))
 	capture:Show()
 end
 
@@ -673,8 +728,10 @@ local function BuildMenu()
 
 	menu = CreateFrame("Frame", nil, menuLayer)
 	menu:SetFrameLevel(menuLayer:GetFrameLevel() + 10)
-	Fill(menu, "BACKGROUND", UI.menu)
-	AddBorder(menu, UI.border)
+	if not ns.Skin.Panel(menu) then
+		Fill(menu, "BACKGROUND", UI.menu)
+		AddBorder(menu, UI.border)
+	end
 
 	menu.divider = menu:CreateTexture(nil, "ARTWORK")
 	PixelHeight(menu.divider, 1, 1)
@@ -696,7 +753,7 @@ local function AcquireMenuRow(index)
 	PixelWidth(row.mark, 2, 1)
 	row.mark:SetPoint("TOPLEFT")
 	row.mark:SetPoint("BOTTOMLEFT")
-	row.mark:SetColorTexture(Shade(UI.accent))
+	Themed(function() row.mark:SetColorTexture(Shade(UI.accent)) end)
 
 	row.label = CreateText(row, "", "GameFontHighlight")
 	PixelPoint(row.label, "LEFT", 12, 0)
@@ -741,7 +798,7 @@ local function OpenMenu(picker)
 	for index, preset in ipairs(ns.GetPresets()) do
 		local text = preset.name
 		if index == ns.db.activePreset then
-			text = text .. "  " .. ns.Branded("(active)")
+			text = text .. "  " .. ns.Branded("(active)", AccentHex())
 		end
 		count = count + 1
 		y = LayoutMenuRow(count, y, text,
@@ -1167,8 +1224,12 @@ local function BuildFrame()
 	frame:SetScript("OnHide", CloseMenu)
 	frame:Hide()
 
-	Fill(frame, "BACKGROUND", UI.window)
-	AddBorder(frame, UI.border, "ARTWORK")
+	-- The title bar below is ours and sized to TITLE_HEIGHT, so the skin's own strip
+	-- is skipped.
+	if not ns.Skin.Shell(frame, { noTopBar = true }) then
+		Fill(frame, "BACKGROUND", UI.window)
+		AddBorder(frame, UI.border, "ARTWORK")
+	end
 
 	tinsert(UISpecialFrames, "MarkrConfigFrame")
 
@@ -1215,7 +1276,8 @@ function Config:Refresh()
 
 	local preset = EditedPreset()
 	if preset then
-		local suffix = (selectedPreset == ns.db.activePreset) and "  " .. ns.Branded("(active)") or ""
+		local suffix = (selectedPreset == ns.db.activePreset)
+			and "  " .. ns.Branded("(active)", AccentHex()) or ""
 		frame.picker:SetLabel(preset.name .. suffix)
 	end
 
