@@ -2,7 +2,7 @@
 ## Title: Markr
 ## Notes: Build a world marker sequence, drop it from one hotkey, and switch presets when the plan changes.
 ## Author: delasteve
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: MarkrDB
 ## OptionalDeps: EllesmereUI
 ## IconTexture: Interface\AddOns\Markr\Textures\Glyph.png
