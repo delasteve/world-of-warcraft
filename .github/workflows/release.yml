@@ -26,6 +26,7 @@ jobs:
     env:
       ADDON: ""
       PACKAGE: ""
+      TITLE: ""
       VERSION: ""
       DIR: ""
       BUILD: ""
@@ -65,7 +66,7 @@ jobs:
             echo "DIR=$dir"
           } >> "$GITHUB_ENV"
 
-      - name: Check the tag against the TOC version
+      - name: Check the tag against the TOC, and take the release title from it
         run: |
           set -euo pipefail
           toc=$(sed -n 's/^## Version:[[:space:]]*//p' "$DIR/src/$PACKAGE.toc" | tr -d '\r')
@@ -73,6 +74,14 @@ jobs:
             echo "::error::$PACKAGE.toc says $toc but the tag is $VERSION"
             exit 1
           fi
+
+          # package-as is the folder WoW loads, not a name to put in front of a
+          # reader: Markr ships as Markr, but PremadeGroupsFilter_EllesmereUI is
+          # "Premade Groups Filter - EllesmereUI" everywhere a person sees it. The
+          # TOC title is that name, so the release borrows it and falls back to the
+          # package for an addon whose TOC somehow has no title.
+          title=$(sed -n 's/^## Title:[[:space:]]*//p' "$DIR/src/$PACKAGE.toc" | tr -d '\r')
+          echo "TITLE=${title:-$PACKAGE}" >> "$GITHUB_ENV"
 
       # The API tokens are account-wide and live in repository secrets. Only the
       # per-project ids differ per addon, so each addon carries its own; an addon
@@ -166,3 +175,12 @@ jobs:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
+      # The packager titles the GitHub release after the tag it is given, and the
+      # tag has to stay namespaced for the release to attach to the right one. So
+      # the title is corrected afterwards to the name the addon ships under, which
+      # is the only one a player reading the releases page would recognise.
+      - name: Title the release after the addon rather than the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$TITLE $VERSION"
