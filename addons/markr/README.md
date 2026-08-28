@@ -5,8 +5,8 @@
 </picture>
 <!-- markdownlint-enable MD033 MD041 -->
 
-Markr is a World of Warcraft addon. Build a world marker sequence, drop it from one hotkey,
-and switch presets when the plan changes.
+Build a world marker sequence, drop it from one hotkey, and switch presets when the plan
+changes.
 
 ## Default hotkeys
 
