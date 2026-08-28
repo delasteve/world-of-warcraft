@@ -39,7 +39,7 @@ export default {
   rules: {
     // One entry per addon directory. Grows as addons land. A scope is optional
     // for repo-level types, but when present it must name a real addon.
-    "scope-enum": [2, "always", ["markr"]],
+    "scope-enum": [2, "always", ["markr", "premadegroupsfilter-ellesmereui"]],
     "scope-names-the-addon": [2, "always"],
     "release-subject-is-a-version": [2, "always"],
   },

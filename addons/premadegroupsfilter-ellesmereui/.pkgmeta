@@ -1,0 +1,12 @@
+# The release workflow builds a staging checkout containing only src/, the
+# licence and the changelog, so nothing here needs an ignore list: files that
+# must not ship never reach the packager in the first place.
+
+package-as: PremadeGroupsFilter_EllesmereUI
+
+move-folders:
+  PremadeGroupsFilter_EllesmereUI/src: PremadeGroupsFilter_EllesmereUI
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
