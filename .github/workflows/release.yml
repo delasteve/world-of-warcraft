@@ -156,9 +156,12 @@ jobs:
         run: |
           set -euo pipefail
           git -C "$BUILD" init -q .
+          # Set on the repository rather than passed to the commit: the annotated
+          # tag needs a tagger identity of its own, and a bare runner has none.
+          git -C "$BUILD" config user.email actions@github.com
+          git -C "$BUILD" config user.name "GitHub Actions"
           git -C "$BUILD" add -A
-          git -C "$BUILD" -c user.email=actions@github.com -c user.name="GitHub Actions" \
-            commit -qm "$GITHUB_REF_NAME"
+          git -C "$BUILD" commit -qm "$GITHUB_REF_NAME"
           git -C "$BUILD" tag -a "$GITHUB_REF_NAME" -m "$VERSION"
           git -C "$BUILD" remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
 
