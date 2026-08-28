@@ -77,9 +77,9 @@ jobs:
 
           # package-as is the folder WoW loads, not a name to put in front of a
           # reader: Markr ships as Markr, but PremadeGroupsFilter_EllesmereUI is
-          # "Premade Groups Filter - EllesmereUI" everywhere a person sees it. The
-          # TOC title is that name, so the release borrows it and falls back to the
-          # package for an addon whose TOC somehow has no title.
+          # "Premade Groups Filter - EllesmereUI Skin" everywhere a person sees it.
+          # The TOC title is that name, so the release borrows it and falls back to
+          # the package for an addon whose TOC somehow has no title.
           title=$(sed -n 's/^## Title:[[:space:]]*//p' "$DIR/src/$PACKAGE.toc" | tr -d '\r')
           echo "TITLE=${title:-$PACKAGE}" >> "$GITHUB_ENV"
 

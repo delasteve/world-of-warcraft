@@ -1,5 +1,5 @@
 ## Interface: 120100
-## Title: Premade Groups Filter - EllesmereUI
+## Title: Premade Groups Filter - EllesmereUI Skin
 ## Version: 1.0.0
 ## Author: delasteve
 ## IconTexture: 397907

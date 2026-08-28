@@ -414,9 +414,11 @@ end
 
 local function ApplySkin(S)
     local dialog = PremadeGroupsFilter and PremadeGroupsFilter.DialogFrame
+    -- 7.6.1 is the version to name, but the export is the thing that matters, so the
+    -- gate stays a capability check rather than a version comparison.
     if not dialog then
-        print("|cffffff00Premade Groups Filter - EllesmereUI|r: needs a version of Premade "
-            .. "Groups Filter that exports PremadeGroupsFilter.DialogFrame.")
+        print("|cffffff00Premade Groups Filter - EllesmereUI Skin|r: needs "
+            .. "Premade Groups Filter 7.6.1 or newer.")
         return
     end
     SkinDialog(S, dialog)

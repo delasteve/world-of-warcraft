@@ -1,6 +1,6 @@
-# Premade Groups Filter - EllesmereUI
+# Premade Groups Filter - EllesmereUI Skin
 
-Premade Groups Filter - EllesmereUI is a World of Warcraft addon. It skins the
+Premade Groups Filter - EllesmereUI Skin skins the
 [Premade Groups Filter](https://github.com/0xbs/premade-groups-filter) dialog to match your
 [EllesmereUI](https://github.com/EllesmereGaming/EllesmereUI) theme.
 
@@ -15,8 +15,7 @@ Premade Groups Filter - EllesmereUI is a World of Warcraft addon. It skins the
 
 ## Requirements
 
-- **Premade Groups Filter**, kept up to date. If your copy is too old to work with, this
-  addon says so in chat once and leaves the window alone.
+- **Premade Groups Filter**, 7.6.1 or newer.
 - **EllesmereUI**, with third-party skinning turned on under
   **Blizz UI Enhanced → Blizzard Window Skins → Third-Party Addons**.
 
