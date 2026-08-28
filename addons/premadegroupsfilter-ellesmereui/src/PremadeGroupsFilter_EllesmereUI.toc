@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: Premade Groups Filter - EllesmereUI Skin
-## Version: 1.0.0
+## Version: 1.0.1
 ## Author: delasteve
 ## IconTexture: 397907
 ## Notes: Skins the Premade Groups Filter dialog to match your EllesmereUI theme.
