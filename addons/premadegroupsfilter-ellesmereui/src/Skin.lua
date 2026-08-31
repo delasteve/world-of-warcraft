@@ -85,6 +85,11 @@ local dropDowns = setmetatable({}, { __mode = "k" })
 local function SkinTextButton(S, button)
     S.Button(button)
     S.Font(button.Label)
+    -- The template declares the label setAllPoints and left justified, so the letter
+    -- sits against the left edge until the mixin of Premade Groups Filter re-anchors
+    -- it on the first mouse up or leave. It anchors to CENTER, so this survives.
+    button.Label:ClearAllPoints()
+    button.Label:SetPoint("CENTER")
 end
 
 --- Creates the accent ring shown while a checkbox is checked, as four strips on a
